@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 
+          http://maven.apache.org/xsd/settings-1.2.0.xsd">
+    
+    <localRepository>/var/jenkins_home/.m2/repository</localRepository>
+    
+    <mirrors>
+        <!-- Optional: Use custom Maven mirror if needed -->
+    </mirrors>
+    
+    <profiles>
+        <profile>
+            <id>jenkins</id>
+            <properties>
+                <maven.compiler.source>11</maven.compiler.source>
+                <maven.compiler.target>11</maven.compiler.target>
+            </properties>
+        </profile>
+    </profiles>
+    
+    <activeProfiles>
+        <activeProfile>jenkins</activeProfile>
+    </activeProfiles>
+    
+</settings>
+

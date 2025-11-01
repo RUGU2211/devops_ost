@@ -1,0 +1,135 @@
+// Jenkinsfile Declarative Pipeline for Spring PetClinic Application
+// This is the Declarative Pipeline alternative with simpler syntax
+
+pipeline {
+    agent any
+    
+    tools {
+        maven 'Maven-3.8.6'
+        jdk 'JDK-17'
+    }
+    
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code from SCM...'
+                checkout scm
+                script {
+                    env.BUILD_VERSION = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
+                echo "Build version: ${env.BUILD_VERSION}"
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo 'Building Spring PetClinic application...'
+                script {
+                    sh '''
+                        mvn clean compile -DskipTests
+                        echo "Build completed successfully!"
+                    '''
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo 'Running unit tests...'
+                script {
+                    try {
+                        sh '''
+                            mvn test
+                            echo "All tests passed!"
+                        '''
+                    } catch (Exception e) {
+                        echo "Tests failed: ${e.getMessage()}"
+                        throw e
+                    }
+                }
+            }
+            post {
+                always {
+                    echo 'Archiving test results...'
+                    junit 'target/surefire-reports/*.xml'
+                    archiveArtifacts artifacts: 'target/surefire-reports/**', 
+                                   allowEmptyArchive: true
+                }
+            }
+        }
+        
+        stage('Package') {
+            when {
+                expression { 
+                    currentBuild.resultIsBetterOrEqualTo('SUCCESS')
+                }
+            }
+            steps {
+                echo 'Packaging application...'
+                sh '''
+                    mvn package -DskipTests
+                    echo "Package created successfully!"
+                '''
+            }
+        }
+        
+        stage('Archive Artifacts') {
+            steps {
+                echo 'Archiving build artifacts...'
+                script {
+                    archiveArtifacts artifacts: 'target/*.jar', 
+                                   fingerprint: true,
+                                   allowEmptyArchive: false
+                    echo 'Artifacts archived!'
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
+        }
+        
+        success {
+            echo '========================================'
+            echo 'Pipeline completed successfully! ✅'
+            echo 'Build version: ' + env.BUILD_VERSION
+            echo '========================================'
+            // Uncomment to add email notifications
+            // emailext (
+            //     subject: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+            //     body: "Pipeline executed successfully.",
+            //     to: "team@example.com"
+            // )
+        }
+        
+        failure {
+            echo '========================================'
+            echo 'Pipeline failed! ❌'
+            echo 'Please check the logs for errors.'
+            echo '========================================'
+            // Uncomment to add email notifications
+            // emailext (
+            //     subject: "FAILED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+            //     body: "Pipeline failed. Please check the logs.",
+            //     to: "team@example.com"
+            // )
+        }
+        
+        unstable {
+            echo 'Build is unstable - some tests may have failed'
+        }
+    }
+}
+
